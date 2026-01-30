@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>🎶 Music Streamer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .container {
+      background: rgba(0, 0, 0, 0.35);
+      padding: 30px;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 420px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    h1 {
+      margin-bottom: 20px;
+      font-size: 24px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: none;
+      outline: none;
+      margin-bottom: 15px;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 10px;
+    }
+
+    button {
+      flex: 1;
+      padding: 12px;
+      font-size: 15px;
+      font-weight: bold;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.1s ease, opacity 0.1s ease;
+    }
+
+    button:hover {
+      transform: scale(1.03);
+      opacity: 0.9;
+    }
+
+    .play-btn {
+      background: #1db954;
+      color: #000;
+    }
+
+    .download-btn {
+      background: #ff9800;
+      color: #000;
+    }
+
+    audio {
+      width: 100%;
+      margin-top: 25px;
+    }
+
+    footer {
+      margin-top: 20px;
+      font-size: 12px;
+      opacity: 0.7;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>🎧 Live Music Stream</h1>
+
+    <input
+      type="text"
+      id="song"
+      placeholder="Search song (name / artist)"
+      required
+    >
+
+    <div class="buttons">
+      <button class="play-btn" id="playBtn">▶ Play</button>
+      <button class="download-btn" id="downloadBtn">⬇ Download</button>
+    </div>
+
+    <audio id="player" controls autoplay></audio>
+
+    <footer>
+      Stream & Download (learning purpose)
+    </footer>
+  </div>
+
+  <script>
+    const songInput = document.getElementById("song");
+    const player = document.getElementById("player");
+    const playBtn = document.getElementById("playBtn");
+    const downloadBtn = document.getElementById("downloadBtn");
+
+    playBtn.addEventListener("click", () => {
+      const song = songInput.value.trim();
+      if (!song) {
+        alert("Please enter a song name");
+        return;
+      }
+      player.src = `/play?q=${encodeURIComponent(song)}`;
+      player.play();
+    });
+
+    downloadBtn.addEventListener("click", () => {
+      const song = songInput.value.trim();
+      if (!song) {
+        alert("Please enter a song name");
+        return;
+      }
+      window.location.href = `/download?q=${encodeURIComponent(song)}`;
+    });
+  </script>
+
+</body>
+</html>
