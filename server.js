@@ -5,78 +5,68 @@ const ffmpegPath = require("ffmpeg-static");
 const path = require("path");
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
-// FFmpeg path set
+// FFmpeg path
 ffmpeg.setFfmpegPath(ffmpegPath);
 
-// Middlewares
-app.use(express.urlencoded({ extended: true }));
+// Middleware
 app.use(express.static(path.join(__dirname, "public")));
 
-// 🎧 STREAM ROUTE (NO SAVE)
-app.get("/play", async (req, res) => {
+// 🟢 PLAY ROUTE
+// 👉 Localhost = enabled
+// 👉 Render = disabled (to avoid error)
+app.get("/play", (req, res) => {
     const query = req.query.q;
-    if (!query) return res.status(400).send("No song provided");
+    if (!query) return res.end();
 
-    console.log(`🔍 Streaming: ${query}`);
+    // Detect cloud (Render)
+    if (process.env.RENDER) {
+        return res
+            .status(403)
+            .send("Streaming disabled on cloud hosting");
+    }
 
     try {
-        const ytProcess = ytDlp.exec(
+        const yt = ytDlp.exec(
             `ytsearch1:${query}`,
             {
                 o: "-",
                 f: "bestaudio",
-                noPlaylist: true,
-                q: ""
+                noPlaylist: true
             },
             { stdio: ["ignore", "pipe", "ignore"] }
         );
-
-        if (!ytProcess.stdout) {
-            return res.status(500).send("YouTube stream failed");
-        }
 
         res.setHeader("Content-Type", "audio/mpeg");
 
-        ffmpeg(ytProcess.stdout)
+        ffmpeg(yt.stdout)
             .audioCodec("libmp3lame")
             .audioBitrate(128)
             .format("mp3")
-            .on("error", err => {
-                console.error("❌ FFmpeg Error:", err.message);
-                res.end();
-            })
-            .pipe(res, { end: true });
+            .on("error", () => res.end())
+            .pipe(res);
 
     } catch (err) {
-        console.error("❌ Error:", err.message);
-        res.status(500).send("Streaming error");
+        res.end();
     }
 });
 
-
+// 🟢 DOWNLOAD ROUTE (works everywhere)
 app.get("/download", async (req, res) => {
     const query = req.query.q;
-    if (!query) return res.status(400).send("No song provided");
-
-    console.log(`⬇️ Downloading: ${query}`);
+    if (!query) return res.end();
 
     try {
-        const ytProcess = ytDlp.exec(
+        const yt = ytDlp.exec(
             `ytsearch1:${query}`,
             {
                 o: "-",
                 f: "bestaudio",
-                noPlaylist: true,
-                q: ""
+                noPlaylist: true
             },
             { stdio: ["ignore", "pipe", "ignore"] }
         );
-
-        if (!ytProcess.stdout) {
-            return res.status(500).send("YouTube stream failed");
-        }
 
         res.setHeader(
             "Content-Disposition",
@@ -84,25 +74,17 @@ app.get("/download", async (req, res) => {
         );
         res.setHeader("Content-Type", "audio/mpeg");
 
-        ffmpeg(ytProcess.stdout)
+        ffmpeg(yt.stdout)
             .audioCodec("libmp3lame")
             .audioBitrate(128)
             .format("mp3")
-            .on("error", err => {
-                console.error("❌ FFmpeg Error:", err.message);
-                res.end();
-            })
-            .pipe(res, { end: true });
+            .pipe(res);
 
     } catch (err) {
-        console.error("❌ Download Error:", err.message);
-        res.status(500).send("Download failed");
+        res.end();
     }
 });
 
-
-
-
 app.listen(PORT, () => {
-    console.log(`🚀 Server running at http://localhost:${PORT}`);
+    console.log(`🚀 Server running on port ${PORT}`);
 });
