@@ -2,38 +2,27 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>🎶 Music Streamer</title>
+  <title>🎶 Music App</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
-
     body {
-      margin: 0;
-      font-family: Arial, Helvetica, sans-serif;
-      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+      background: #111;
       color: #fff;
-      min-height: 100vh;
+      font-family: Arial, sans-serif;
       display: flex;
       align-items: center;
       justify-content: center;
+      min-height: 100vh;
     }
 
-    .container {
-      background: rgba(0, 0, 0, 0.35);
-      padding: 30px;
-      border-radius: 12px;
+    .box {
       width: 100%;
-      max-width: 420px;
+      max-width: 400px;
+      background: #1c1c1c;
+      padding: 25px;
+      border-radius: 12px;
       text-align: center;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    }
-
-    h1 {
-      margin-bottom: 20px;
-      font-size: 24px;
     }
 
     input {
@@ -42,101 +31,84 @@
       font-size: 16px;
       border-radius: 8px;
       border: none;
-      outline: none;
       margin-bottom: 15px;
     }
 
-    .buttons {
-      display: flex;
-      gap: 10px;
-    }
-
     button {
-      flex: 1;
       padding: 12px;
-      font-size: 15px;
-      font-weight: bold;
+      width: 100%;
+      font-size: 16px;
       border-radius: 8px;
       border: none;
+      margin-bottom: 10px;
       cursor: pointer;
-      transition: transform 0.1s ease, opacity 0.1s ease;
     }
 
-    button:hover {
-      transform: scale(1.03);
-      opacity: 0.9;
-    }
-
-    .play-btn {
+    .play {
       background: #1db954;
       color: #000;
     }
 
-    .download-btn {
+    .download {
       background: #ff9800;
       color: #000;
     }
 
     audio {
       width: 100%;
-      margin-top: 25px;
+      margin-top: 20px;
     }
 
-    footer {
-      margin-top: 20px;
+    .note {
       font-size: 12px;
       opacity: 0.7;
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
 
-  <div class="container">
-    <h1>🎧 Live Music Stream</h1>
+  <div class="box">
+    <h2>🎧 Music App</h2>
 
-    <input
-      type="text"
-      id="song"
-      placeholder="Search song (name / artist)"
-      required
-    >
+    <input id="song" placeholder="Song name / artist">
 
-    <div class="buttons">
-      <button class="play-btn" id="playBtn">▶ Play</button>
-      <button class="download-btn" id="downloadBtn">⬇ Download</button>
-    </div>
+    <button class="play" id="playBtn">▶ Play</button>
+    <button class="download" id="downloadBtn">⬇ Download</button>
 
-    <audio id="player" controls autoplay></audio>
+    <audio id="player" controls></audio>
 
-    <footer>
-      Stream & Download (learning purpose)
-    </footer>
+    <div class="note" id="note"></div>
   </div>
 
   <script>
-    const songInput = document.getElementById("song");
-    const player = document.getElementById("player");
+    const song = document.getElementById("song");
     const playBtn = document.getElementById("playBtn");
     const downloadBtn = document.getElementById("downloadBtn");
+    const player = document.getElementById("player");
+    const note = document.getElementById("note");
 
-    playBtn.addEventListener("click", () => {
-      const song = songInput.value.trim();
-      if (!song) {
-        alert("Please enter a song name");
-        return;
-      }
-      player.src = `/play?q=${encodeURIComponent(song)}`;
+    const isLocalhost =
+      location.hostname === "localhost" ||
+      location.hostname === "127.0.0.1";
+
+    // Disable play on Render
+    if (!isLocalhost) {
+      playBtn.disabled = true;
+      playBtn.style.opacity = "0.5";
+      note.innerText = "Streaming disabled on cloud hosting";
+    }
+
+    playBtn.onclick = () => {
+      if (!song.value.trim()) return;
+      player.src = `/play?q=${encodeURIComponent(song.value)}`;
       player.play();
-    });
+    };
 
-    downloadBtn.addEventListener("click", () => {
-      const song = songInput.value.trim();
-      if (!song) {
-        alert("Please enter a song name");
-        return;
-      }
-      window.location.href = `/download?q=${encodeURIComponent(song)}`;
-    });
+    downloadBtn.onclick = () => {
+      if (!song.value.trim()) return;
+      window.location.href = `/download?q=${encodeURIComponent(song.value)}`;
+    };
   </script>
 
 </body>
