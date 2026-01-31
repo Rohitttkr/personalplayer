@@ -2,7 +2,7 @@
   "name": "yt-to-mp3",
   "version": "1.0.0",
   "description": "Simple Music Downloader",
-  "main": "script.js",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "postinstall": "node -e \"require('yt-dlp-exec').download()\""
