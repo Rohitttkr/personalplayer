@@ -3,51 +3,53 @@ const ytDlp = require("yt-dlp-exec");
 const ffmpeg = require("fluent-ffmpeg");
 const ffmpegPath = require("ffmpeg-static");
 const path = require("path");
+// Note: Node 18+ mein fetch built-in hota hai, agar purana hai toh require karein
+// const fetch = require('node-fetch'); 
 
 const app = express();
-const PORT = 3000;
-
+const PORT = process.env.PORT || 3000;
 
 // FFmpeg setup
 ffmpeg.setFfmpegPath(ffmpegPath);
 
-// Middleware
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
 
-// ✅ 1. SMART SUGGESTION ROUTE (Only Songs Logic)
+// --- 1. SUGGESTION ROUTE ---
 app.get("/suggest", async (req, res) => {
     const query = req.query.q;
     if (!query) return res.json([]);
 
     try {
-        // Hum 'ds=yt' (YouTube datasource) aur 'gl=IN' (India location) use kar rahe hain
-        // Taaki result music se relevat aaye
         const url = `https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&gl=IN&q=${encodeURIComponent(query)}`;
-
         const response = await fetch(url);
         const data = await response.json();
-        const rawSuggestions = data[1]; // Google se aayi list
-
-        // 🛡️ FILTER LOGIC: Faltu cheezein hatao
-        const ignoreWords = ["reaction", "review", "roast", "news", "interview", "gameplay", "trailer", "scene", "explained", "cover", "remix", "parody", "tutorial", "challenge", "vlog", "meme", "live", "full movie", "episode", "podcast", "audiobook", "free fire", "bgmi"];
-
-        const cleanSuggestions = rawSuggestions.filter(item => {
+        
+        const ignoreWords = ["reaction", "review", "roast", "news", "gameplay", "trailer", "explained"];
+        const cleanSuggestions = (data[1] || []).filter(item => {
             const lowerItem = item.toLowerCase();
-            // Agar inme se koi bhi ganda word hai, toh use hata do
             return !ignoreWords.some(badWord => lowerItem.includes(badWord));
         });
 
-        // Top 7 clean results bhejo
-        res.json(cleanSuggestions.slice(0, 7));
-
+        res.json(cleanSuggestions.slice(0, 7)); 
     } catch (err) {
         console.error("Suggestion Error:", err.message);
         res.json([]);
     }
 });
 
-// ✅ 2. PLAY STREAM ROUTE
+// --- Helper Function for yt-dlp flags ---
+const getYtOptions = () => ({
+    o: '-',
+    f: 'bestaudio',
+    noPlaylist: true,
+    q: '',
+    noWarnings: true,
+    // User Agent spoofing to bypass simple blocks
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+});
+
+// --- 2. PLAY STREAM ROUTE ---
 app.get("/play", (req, res) => {
     const query = req.query.q;
     if (!query) return res.status(400).send("No song provided");
@@ -55,31 +57,38 @@ app.get("/play", (req, res) => {
     console.log(`🎧 Streaming: ${query}`);
 
     try {
-        const ytProcess = ytDlp.exec(
-            `ytsearch1:${query}`,
-            { o: "-", f: "bestaudio", noPlaylist: true, q: "" },
-            { stdio: ["ignore", "pipe", "ignore"] }
-        );
-
-        // Header ko FFmpeg shuru hone se pehle bhej dein
+        // Headers set karein taaki browser wait kare
         res.setHeader("Content-Type", "audio/mpeg");
-        res.setHeader("Transfer-Encoding", "chunked"); // Browser ko batayega ki data aa raha hai
+        res.setHeader("Transfer-Encoding", "chunked");
 
+        const ytProcess = ytDlp.exec(`ytsearch1:${query}`, getYtOptions(), { 
+            stdio: ['ignore', 'pipe', 'ignore'] 
+        });
+
+        if (!ytProcess.stdout) {
+            console.error("❌ Process stdout is null");
+            return res.end();
+        }
 
         ffmpeg(ytProcess.stdout)
             .audioCodec("libmp3lame")
             .audioBitrate(128)
             .format("mp3")
-            .on("error", () => { })
+            .on("error", (err) => {
+                // Sirf log karein, crash na karein
+                if (err.message !== 'Output stream closed') {
+                    console.error("FFmpeg Error:", err.message);
+                }
+            })
             .pipe(res, { end: true });
 
     } catch (err) {
-        console.error("Stream Error:", err);
+        console.error("❌ Critical Stream Error:", err.message);
         res.end();
     }
 });
 
-// ✅ 3. DOWNLOAD ROUTE
+// --- 3. DOWNLOAD ROUTE ---
 app.get("/download", (req, res) => {
     const query = req.query.q;
     if (!query) return res.status(400).send("No song provided");
@@ -87,33 +96,27 @@ app.get("/download", (req, res) => {
     console.log(`⬇️ Downloading: ${query}`);
 
     try {
-        const ytProcess = ytDlp.exec(
-            `ytsearch1:${query}`,
-            { o: "-", f: "bestaudio", noPlaylist: true, q: "" },
-            { stdio: ["ignore", "pipe", "ignore"] }
-        );
-
         const safeFilename = query.replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, "_");
-
         res.setHeader("Content-Disposition", `attachment; filename="${safeFilename}.mp3"`);
         res.setHeader("Content-Type", "audio/mpeg");
-        res.setHeader("Transfer-Encoding", "chunked"); // Browser ko batayega ki data aa raha hai
 
-
+        const ytProcess = ytDlp.exec(`ytsearch1:${query}`, getYtOptions(), { 
+            stdio: ['ignore', 'pipe', 'ignore'] 
+        });
 
         ffmpeg(ytProcess.stdout)
             .audioCodec("libmp3lame")
             .audioBitrate(128)
             .format("mp3")
-            .on("error", () => { })
+            .on("error", () => {})
             .pipe(res, { end: true });
 
     } catch (err) {
-        console.error("Download Error:", err);
+        console.error("Download Error:", err.message);
         res.end();
     }
 });
 
 app.listen(PORT, () => {
-    console.log(`🚀 Music App Ready: http://localhost:${PORT}`);
+    console.log(`🚀 Server running on port ${PORT}`);
 });
